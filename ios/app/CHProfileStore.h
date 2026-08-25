@@ -6,6 +6,8 @@
 @property(nonatomic, readonly) NSDictionary *runtime;
 - (NSDictionary *)activeProfile;
 - (void)addProfileNamed:(NSString *)name;
+- (void)renameProfileAtIndex:(NSUInteger)index name:(NSString *)name;
+- (void)setMetadataValue:(NSString *)value forKey:(NSString *)key profileAtIndex:(NSUInteger)index;
 - (void)deleteProfileAtIndex:(NSUInteger)index;
 - (void)activateProfileAtIndex:(NSUInteger)index;
 - (void)addBundleID:(NSString *)bundleID toProfileAtIndex:(NSUInteger)index;

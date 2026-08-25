@@ -17,7 +17,7 @@ The project does not implement jailbreak-detection bypass, anti-detection evasio
 
 ## Current status
 
-Version 0.4 introduces an app-first iOS workflow: Chameleon discovers third-party user applications, displays their original icons and bundle IDs, and creates or activates profiles directly from the selected app. System applications and jailbreak utility/tweak bundles are filtered out. Location selection uses an OpenStreetMap overlay with a tappable and draggable pin.
+Version 0.5 uses an overview-first workflow. The dashboard shows only the currently running profile; installed applications live in a separate Applications screen, and every application opens its own list of profiles. Each profile has a dedicated setup page for activation, launch, proxy, location and editable profile metadata aliases. System applications and jailbreak utility/tweak bundles are filtered out. The location picker follows Geranium's native MapKit approach with current-location permission and a tappable/draggable pin.
 
 ## Quick start
 

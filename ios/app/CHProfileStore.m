@@ -31,8 +31,16 @@ static NSString *const CHStorePath = @"/var/mobile/Library/Preferences/com.flipa
 }
 - (void)addProfileNamed:(NSString *)name {
     NSMutableArray *profiles = [self mutableProfiles];
-    [profiles addObject:[@{@"id": NSUUID.UUID.UUIDString.lowercaseString, @"name": name, @"apps": [NSMutableArray array], @"proxy": [NSMutableDictionary dictionary], @"location": [NSMutableDictionary dictionary]} mutableCopy]];
+    [profiles addObject:[@{@"id": NSUUID.UUID.UUIDString.lowercaseString, @"name": name, @"apps": [NSMutableArray array], @"proxy": [NSMutableDictionary dictionary], @"location": [NSMutableDictionary dictionary], @"metadata": [NSMutableDictionary dictionary]} mutableCopy]];
     self.data[@"profiles"] = profiles; [self save];
+}
+- (void)renameProfileAtIndex:(NSUInteger)index name:(NSString *)name {
+    NSMutableArray *profiles = [self mutableProfiles]; if (index >= profiles.count || !name.length) return;
+    NSMutableDictionary *profile = [profiles[index] mutableCopy]; profile[@"name"] = name; profiles[index] = profile; self.data[@"profiles"] = profiles; [self save];
+}
+- (void)setMetadataValue:(NSString *)value forKey:(NSString *)key profileAtIndex:(NSUInteger)index {
+    NSMutableArray *profiles = [self mutableProfiles]; if (index >= profiles.count || !key.length) return;
+    NSMutableDictionary *profile = [profiles[index] mutableCopy]; NSMutableDictionary *metadata = [profile[@"metadata"] mutableCopy] ?: [NSMutableDictionary dictionary]; metadata[key] = value ?: @""; profile[@"metadata"] = metadata; profiles[index] = profile; self.data[@"profiles"] = profiles; [self save];
 }
 - (void)deleteProfileAtIndex:(NSUInteger)index {
     NSMutableArray *profiles = [self mutableProfiles]; if (index >= profiles.count) return;
