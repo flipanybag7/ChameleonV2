@@ -50,11 +50,19 @@ static NSString *const CHStorePath = @"/var/mobile/Library/Preferences/com.flipa
 }
 - (void)setProxyHost:(NSString *)host port:(NSInteger)port forProfileAtIndex:(NSUInteger)index {
     NSMutableArray *profiles = [self mutableProfiles]; if (index >= profiles.count) return;
-    NSMutableDictionary *profile = [profiles[index] mutableCopy]; profile[@"proxy"] = @{@"host": host ?: @"", @"port": @(port)}; profiles[index] = profile; self.data[@"profiles"] = profiles; [self save];
+    NSMutableDictionary *profile = [profiles[index] mutableCopy]; BOOL enabled = [profile[@"proxy"][@"enabled"] boolValue]; profile[@"proxy"] = @{@"host": host ?: @"", @"port": @(port), @"enabled": @(enabled)}; profiles[index] = profile; self.data[@"profiles"] = profiles; [self save];
+}
+- (void)setProxyEnabled:(BOOL)enabled forProfileAtIndex:(NSUInteger)index {
+    NSMutableArray *profiles = [self mutableProfiles]; if (index >= profiles.count) return;
+    NSMutableDictionary *profile = [profiles[index] mutableCopy]; NSMutableDictionary *proxy = [profile[@"proxy"] mutableCopy] ?: [NSMutableDictionary dictionary]; proxy[@"enabled"] = @(enabled); profile[@"proxy"] = proxy; profiles[index] = profile; self.data[@"profiles"] = profiles; [self save];
 }
 - (void)setLatitude:(double)latitude longitude:(double)longitude label:(NSString *)label forProfileAtIndex:(NSUInteger)index {
     NSMutableArray *profiles = [self mutableProfiles]; if (index >= profiles.count) return;
-    NSMutableDictionary *profile = [profiles[index] mutableCopy]; profile[@"location"] = @{@"latitude": @(latitude), @"longitude": @(longitude), @"label": label ?: @""}; profiles[index] = profile; self.data[@"profiles"] = profiles; [self save];
+    NSMutableDictionary *profile = [profiles[index] mutableCopy]; BOOL enabled = [profile[@"location"][@"enabled"] boolValue]; profile[@"location"] = @{@"latitude": @(latitude), @"longitude": @(longitude), @"label": label ?: @"", @"enabled": @(enabled)}; profiles[index] = profile; self.data[@"profiles"] = profiles; [self save];
+}
+- (void)setLocationEnabled:(BOOL)enabled forProfileAtIndex:(NSUInteger)index {
+    NSMutableArray *profiles = [self mutableProfiles]; if (index >= profiles.count) return;
+    NSMutableDictionary *profile = [profiles[index] mutableCopy]; NSMutableDictionary *location = [profile[@"location"] mutableCopy] ?: [NSMutableDictionary dictionary]; location[@"enabled"] = @(enabled); profile[@"location"] = location; profiles[index] = profile; self.data[@"profiles"] = profiles; [self save];
 }
 - (NSURL *)exportBackup {
     NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"ChameleonBackup.json"];

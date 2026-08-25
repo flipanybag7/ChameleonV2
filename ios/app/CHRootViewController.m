@@ -23,6 +23,20 @@
     } else {
         NSArray *titles = @[@"Assign App", @"Proxy", @"Location", @"Export Backup", @"Diagnostics"]; NSArray *icons = @[@"square.grid.2x2", @"network", @"location", @"square.and.arrow.up", @"stethoscope"];
         cell.textLabel.text = titles[indexPath.row]; cell.imageView.image = [UIImage systemImageNamed:icons[indexPath.row]];
+        if ((indexPath.row == 1 || indexPath.row == 2) && self.store.activeProfile) {
+            UISwitch *toggle = [UISwitch new]; toggle.tag = indexPath.row;
+            NSDictionary *profile = self.store.activeProfile;
+            toggle.on = indexPath.row == 1 ? [profile[@"proxy"][@"enabled"] boolValue] : [profile[@"location"][@"enabled"] boolValue];
+            [toggle addTarget:self action:@selector(featureToggled:) forControlEvents:UIControlEventValueChanged];
+            cell.accessoryView = toggle; cell.accessoryType = UITableViewCellAccessoryNone;
+            if (indexPath.row == 1) {
+                NSString *host = profile[@"proxy"][@"host"] ?: @"Not configured";
+                cell.detailTextLabel.text = toggle.on ? [NSString stringWithFormat:@"Enabled · %@", host] : @"Disabled";
+            } else {
+                NSString *label = profile[@"location"][@"label"] ?: @"Not configured";
+                cell.detailTextLabel.text = toggle.on ? [NSString stringWithFormat:@"Testing enabled · %@", label] : @"Disabled";
+            }
+        }
     }
     return cell;
 }
@@ -35,6 +49,11 @@
 }
 - (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)style forRowAtIndexPath:(NSIndexPath *)indexPath { if (indexPath.section == 1 && style == UITableViewCellEditingStyleDelete) { [self.store deleteProfileAtIndex:indexPath.row]; [tableView reloadData]; } }
 - (NSUInteger)activeIndex { return [self.store.profiles indexOfObjectPassingTest:^BOOL(NSDictionary *p, NSUInteger idx, BOOL *stop) { return [p[@"id"] isEqual:self.store.activeProfileID]; }]; }
+- (void)featureToggled:(UISwitch *)sender {
+    if (sender.tag == 1) [self.store setProxyEnabled:sender.on forProfileAtIndex:self.activeIndex];
+    else [self.store setLocationEnabled:sender.on forProfileAtIndex:self.activeIndex];
+    [self.tableView reloadData];
+}
 - (void)addProfile { [self prompt:@"New Profile" fields:@[@"Name"] completion:^(NSArray *v) { if ([v[0] length]) { [self.store addProfileNamed:v[0]]; [self.tableView reloadData]; } }]; }
 - (void)assignApp { [self prompt:@"Assign App" fields:@[@"Bundle ID (e.g. com.example.app)"] completion:^(NSArray *v) { if ([v[0] length]) { [self.store addBundleID:v[0] toProfileAtIndex:self.activeIndex]; [self.tableView reloadData]; } }]; }
 - (void)configureProxy { [self prompt:@"Proxy" fields:@[@"Host", @"Port"] completion:^(NSArray *v) { [self.store setProxyHost:v[0] port:[v[1] integerValue] forProfileAtIndex:self.activeIndex]; }]; }
