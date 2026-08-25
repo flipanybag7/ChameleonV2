@@ -18,7 +18,6 @@ jobs:
   rootless-package:
     runs-on: ubuntu-latest
     needs: cli-tests
-    if: ${{ hashFiles('ios/**') != '' }}
     steps:
       - uses: actions/checkout@v4
       - name: Install Theos dependencies
