@@ -3,11 +3,19 @@ TARGET = iphone:clang:latest:15.0
 
 include $(THEOS)/makefiles/common.mk
 
+APPLICATION_NAME = Chameleon
+Chameleon_FILES = app/main.m app/CHAppDelegate.m app/CHRootViewController.m app/CHProfileStore.m
+Chameleon_CFLAGS = -fobjc-arc
+Chameleon_FRAMEWORKS = UIKit Foundation
+Chameleon_INSTALL_PATH = /Applications
+Chameleon_RESOURCE_DIRS = app/Resources
+
+include $(THEOS_MAKE_PATH)/application.mk
+
 TWEAK_NAME = ProfileRuntime
 ProfileRuntime_FILES = Tweak.xm
 ProfileRuntime_CFLAGS = -fobjc-arc
 ProfileRuntime_FRAMEWORKS = Foundation
-ProfileRuntime_PACKAGE_CONTROL_PATH = ./control
 
 include $(THEOS_MAKE_PATH)/tweak.mk
 
