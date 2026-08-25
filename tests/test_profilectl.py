@@ -10,7 +10,7 @@ def test_profile_lifecycle(tmp_path):
     pid = run(tmp_path, "profile", "create", "alpha")
     run(tmp_path, "profile", "assign-app", pid, "com.example.app")
     run(tmp_path, "profile", "set-proxy", pid, "socks5", "127.0.0.1", "1080")
-    run(tmp_path, "profile", "set-location", pid, "60.17", "24.94", "Helsinki")
+    run(tmp_path, "profile", "set-location", pid, "60.17", "24.94", "--label", "Helsinki")
     obj = json.loads(run(tmp_path, "profile", "show", pid))
     assert obj["apps"]["com.example.app"]["data_namespace"]
     assert obj["proxy"]["port"] == 1080
