@@ -30,3 +30,13 @@ python3 tools/daemon.py --root ./work/profiles
 ```
 
 The daemon exposes `GET /profiles` and `POST /profiles` on loopback only.
+
+## Download the latest GitHub build
+
+With GitHub CLI authenticated, run:
+
+```sh
+./tools/download_latest_build.sh
+```
+
+The script downloads the newest successful `main` build and copies any `.deb`, `.ipa`, or `.zip` artifacts to `/home/whoareyou/Desktop/Githubbbbb`. Override the destination with `DEST=/some/folder ./tools/download_latest_build.sh`.
