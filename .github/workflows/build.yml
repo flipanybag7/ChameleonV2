@@ -21,11 +21,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Theos dependencies
-        run: sudo apt-get update && sudo apt-get install -y clang make perl git rsync curl unzip
+        run: sudo apt-get update && sudo apt-get install -y bash curl sudo
       - name: Install Theos
-        run: git clone --depth 1 https://github.com/theos/theos.git $HOME/theos
-      - name: Bootstrap Theos tools
-        run: bash $HOME/theos/bin/bootstrap.sh
+        run: CI=1 THEOS=$HOME/theos bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
       - name: Build rootless package
         run: THEOS=$HOME/theos make -C ios package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
       - uses: actions/upload-artifact@v4
