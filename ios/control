@@ -1,0 +1,9 @@
+Package: com.example.profileruntime
+Name: ProfileRuntime
+Version: 0.1.0
+Architecture: iphoneos-arm64
+Description: Rootless profile runtime diagnostics companion
+Maintainer: Local development build
+Section: Utilities
+Author: Local development build
+Depiction: https://example.invalid/profile-runtime

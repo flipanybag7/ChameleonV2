@@ -1,0 +1,32 @@
+name: build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  cli-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install pytest
+      - run: python -m pytest -q
+      - run: python -m py_compile tools/profilectl.py
+
+  rootless-package:
+    runs-on: ubuntu-latest
+    needs: cli-tests
+    if: ${{ hashFiles('ios/**') != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Theos dependencies
+        run: sudo apt-get update && sudo apt-get install -y clang make perl ldid git rsync
+      - name: Install Theos
+        run: git clone --depth 1 https://github.com/theos/theos.git $HOME/theos
+      - name: Build rootless package
+        env: {THEOS: ${{ env.HOME }}/theos}
+        run: make -C ios package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
+      - uses: actions/upload-artifact@v4
+        with: {name: rootless-deb, path: ios/packages/*.deb}
