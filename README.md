@@ -17,7 +17,7 @@ The project does not implement jailbreak-detection bypass, anti-detection evasio
 
 ## Current status
 
-The first milestone is a platform-neutral profile store and CLI. The iOS package and injected app-data adapter must be built and tested on macOS with the matching Theos/palera1n toolchain.
+Version 0.4 introduces an app-first iOS workflow: Chameleon discovers third-party user applications, displays their original icons and bundle IDs, and creates or activates profiles directly from the selected app. System applications and jailbreak utility/tweak bundles are filtered out. Location selection uses an OpenStreetMap overlay with a tappable and draggable pin.
 
 ## Quick start
 
