@@ -14,4 +14,5 @@
 - (void)setLatitude:(double)latitude longitude:(double)longitude label:(NSString *)label forProfileAtIndex:(NSUInteger)index;
 - (void)setLocationEnabled:(BOOL)enabled forProfileAtIndex:(NSUInteger)index;
 - (NSURL *)exportBackup;
+- (BOOL)importBackupFromURL:(NSURL *)url error:(NSError **)error;
 @end

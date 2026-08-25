@@ -68,4 +68,16 @@ static NSString *const CHStorePath = @"/var/mobile/Library/Preferences/com.flipa
     NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"ChameleonBackup.json"];
     NSData *json = [NSJSONSerialization dataWithJSONObject:self.data options:NSJSONWritingPrettyPrinted error:nil]; [json writeToFile:path atomically:YES]; return [NSURL fileURLWithPath:path];
 }
+- (BOOL)importBackupFromURL:(NSURL *)url error:(NSError **)error {
+    BOOL scoped = [url startAccessingSecurityScopedResource];
+    NSData *json = [NSData dataWithContentsOfURL:url options:0 error:error];
+    if (!json) { if (scoped) [url stopAccessingSecurityScopedResource]; return NO; }
+    NSDictionary *incoming = [NSJSONSerialization JSONObjectWithData:json options:NSJSONReadingMutableContainers error:error];
+    if (scoped) [url stopAccessingSecurityScopedResource];
+    if (![incoming isKindOfClass:NSDictionary.class] || ![incoming[@"profiles"] isKindOfClass:NSArray.class]) {
+        if (error) *error = [NSError errorWithDomain:@"ChameleonBackup" code:1 userInfo:@{NSLocalizedDescriptionKey: @"Backup does not contain a valid profiles array."}];
+        return NO;
+    }
+    self.data = [incoming mutableCopy]; if (!self.data[@"schema"]) self.data[@"schema"] = @1; [self save]; return YES;
+}
 @end

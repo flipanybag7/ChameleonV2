@@ -6,7 +6,7 @@ static void CHRecordRuntimeState(void) {
     NSMutableDictionary *store = [NSMutableDictionary dictionaryWithContentsOfFile:CHStorePath] ?: [NSMutableDictionary dictionary];
     store[@"runtime"] = @{
         @"component": @"ProfileRuntime",
-        @"version": @"0.3.0",
+        @"version": @"0.3.1",
         @"lastStart": @([[NSDate date] timeIntervalSince1970]),
         @"activeProfile": store[@"activeProfile"] ?: @""
     };
