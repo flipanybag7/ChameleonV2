@@ -2,6 +2,8 @@
 
 This repository contains the safe, test-oriented foundation for a palera1n rootless profile manager.
 
+The rootless package targets iOS 15+ and supports both palera1n and Dopamine environments through ElleKit/Substrate-compatible tweak loading.
+
 ## Scope
 
 - Persistent app-profile metadata and assignments

@@ -1,9 +1,9 @@
 Package: com.flipanybag7.chameleon
 Name: Chameleon
-Version: 0.3.1
+Version: 0.3.2
 Architecture: iphoneos-arm64
 Description: Rootless profile, network and location testing manager
 Maintainer: Local development build
 Section: Utilities
 Author: Local development build
-Depends: firmware (>= 15.0), mobilesubstrate
+Depends: firmware (>= 15.0), ellekit | mobilesubstrate
