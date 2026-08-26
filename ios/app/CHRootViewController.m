@@ -17,7 +17,8 @@ static UIColor *CHMuted(void) { return [UIColor colorWithRed:.62 green:.64 blue:
 
 @implementation CHRootViewController
 - (void)viewDidLoad { [super viewDidLoad]; self.store = [CHProfileStore new]; self.title = @"Overview"; self.view.backgroundColor = [UIColor colorWithRed:.043 green:.051 blue:.059 alpha:1]; self.navigationController.navigationBarHidden = YES; [self buildInterface]; }
-- (void)viewWillAppear:(BOOL)animated { [super viewWillAppear:animated]; [self reloadApplications]; [self rebuildContent]; }
+- (void)viewWillAppear:(BOOL)animated { [super viewWillAppear:animated]; self.navigationController.navigationBarHidden = YES; [self reloadApplications]; [self rebuildContent]; }
+- (void)viewWillDisappear:(BOOL)animated { [super viewWillDisappear:animated]; if (self.navigationController.topViewController != self) self.navigationController.navigationBarHidden = NO; }
 - (void)reloadApplications { self.applications = [CHInstalledAppCatalog thirdPartyApplications]; }
 - (UILabel *)label:(NSString *)text size:(CGFloat)size weight:(UIFontWeight)weight color:(UIColor *)color { UILabel *label = [UILabel new]; label.text = text; label.textColor = color; label.font = [UIFont systemFontOfSize:size weight:weight]; label.numberOfLines = 0; return label; }
 - (UIView *)card { UIView *view = [UIView new]; view.backgroundColor = CHCard(); view.layer.cornerRadius = 20; view.layer.borderWidth = 1; view.layer.borderColor = [UIColor colorWithWhite:1 alpha:.10].CGColor; return view; }
