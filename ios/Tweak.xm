@@ -4,11 +4,21 @@ static NSString *const CHStorePath = @"/var/mobile/Library/Preferences/com.flipa
 
 static void CHRecordRuntimeState(void) {
     NSMutableDictionary *store = [NSMutableDictionary dictionaryWithContentsOfFile:CHStorePath] ?: [NSMutableDictionary dictionary];
+    NSString *activeProfileID = store[@"activeProfile"] ?: @"";
+    NSString *activeContainerID = @"";
+    for (NSDictionary *profile in store[@"profiles"]) {
+        if ([profile[@"id"] isEqual:activeProfileID]) {
+            activeContainerID = profile[@"activeContainer"] ?: [profile[@"containers"] firstObject][@"id"] ?: @"";
+            break;
+        }
+    }
     store[@"runtime"] = @{
         @"component": @"ProfileRuntime",
         @"version": @"0.5.1",
         @"lastStart": @([[NSDate date] timeIntervalSince1970]),
-        @"activeProfile": store[@"activeProfile"] ?: @""
+        @"activeProfile": activeProfileID,
+        @"activeContainer": activeContainerID,
+        @"containerMode": @"app-scoped-registry"
     };
     [store writeToFile:CHStorePath atomically:YES];
 }

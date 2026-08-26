@@ -12,7 +12,18 @@ static NSString *const CHStorePath = @"/var/mobile/Library/Preferences/com.flipa
     if ((self = [super init])) {
         _data = [NSMutableDictionary dictionaryWithContentsOfFile:CHStorePath] ?: [NSMutableDictionary dictionary];
         if (!_data[@"profiles"]) _data[@"profiles"] = [NSMutableArray array];
-        if (!_data[@"schema"]) _data[@"schema"] = @1;
+        if (!_data[@"schema"]) _data[@"schema"] = @2;
+        NSMutableArray *migratedProfiles = [_data[@"profiles"] mutableCopy] ?: [NSMutableArray array];
+        for (NSUInteger i = 0; i < migratedProfiles.count; i++) {
+            NSMutableDictionary *profile = [migratedProfiles[i] mutableCopy];
+            if (![profile[@"containers"] isKindOfClass:NSArray.class]) {
+                NSString *containerID = profile[@"id"] ?: NSUUID.UUID.UUIDString.lowercaseString;
+                profile[@"containers"] = [NSMutableArray arrayWithObject:@{@"id": containerID, @"name": @"Default", @"createdAt": @([[NSDate date] timeIntervalSince1970])}];
+            }
+            if (!profile[@"activeContainer"]) profile[@"activeContainer"] = [profile[@"containers"] firstObject][@"id"];
+            migratedProfiles[i] = profile;
+        }
+        _data[@"profiles"] = migratedProfiles;
         [self save];
     }
     return self;
@@ -31,7 +42,8 @@ static NSString *const CHStorePath = @"/var/mobile/Library/Preferences/com.flipa
 }
 - (void)addProfileNamed:(NSString *)name {
     NSMutableArray *profiles = [self mutableProfiles];
-    [profiles addObject:[@{@"id": NSUUID.UUID.UUIDString.lowercaseString, @"name": name, @"apps": [NSMutableArray array], @"proxy": [NSMutableDictionary dictionary], @"location": [NSMutableDictionary dictionary], @"metadata": [NSMutableDictionary dictionary]} mutableCopy]];
+    NSString *profileID = NSUUID.UUID.UUIDString.lowercaseString;
+    [profiles addObject:[@{@"id": profileID, @"name": name, @"apps": [NSMutableArray array], @"proxy": [NSMutableDictionary dictionary], @"location": [NSMutableDictionary dictionary], @"metadata": [NSMutableDictionary dictionary], @"containers": [NSMutableArray arrayWithObject:@{@"id": profileID, @"name": @"Default", @"createdAt": @([[NSDate date] timeIntervalSince1970])}], @"activeContainer": profileID} mutableCopy]];
     self.data[@"profiles"] = profiles; [self save];
 }
 - (void)renameProfileAtIndex:(NSUInteger)index name:(NSString *)name {
@@ -76,6 +88,28 @@ static NSString *const CHStorePath = @"/var/mobile/Library/Preferences/com.flipa
     NSMutableArray *profiles = [self mutableProfiles]; if (index >= profiles.count) return;
     NSMutableDictionary *profile = [profiles[index] mutableCopy]; NSMutableDictionary *location = [profile[@"location"] mutableCopy] ?: [NSMutableDictionary dictionary]; location[@"enabled"] = @(enabled); profile[@"location"] = location; profiles[index] = profile; self.data[@"profiles"] = profiles; [self save];
 }
+- (NSArray<NSDictionary *> *)containersForProfileAtIndex:(NSUInteger)index {
+    if (index >= self.profiles.count) return @[];
+    NSArray *containers = self.profiles[index][@"containers"];
+    return [containers isKindOfClass:NSArray.class] ? containers : @[];
+}
+- (NSString *)activeContainerIDForProfileAtIndex:(NSUInteger)index {
+    if (index >= self.profiles.count) return @"";
+    return self.profiles[index][@"activeContainer"] ?: [self containersForProfileAtIndex:index].firstObject[@"id"] ?: @"";
+}
+- (void)createContainerNamed:(NSString *)name forProfileAtIndex:(NSUInteger)index {
+    NSMutableArray *profiles = [self mutableProfiles]; if (index >= profiles.count || !name.length) return;
+    NSMutableDictionary *profile = [profiles[index] mutableCopy]; NSMutableArray *containers = [[self containersForProfileAtIndex:index] mutableCopy];
+    NSString *containerID = NSUUID.UUID.UUIDString.lowercaseString; [containers addObject:@{@"id": containerID, @"name": name, @"createdAt": @([[NSDate date] timeIntervalSince1970])}]; profile[@"containers"] = containers; profile[@"activeContainer"] = containerID; profiles[index] = profile; self.data[@"profiles"] = profiles; [self save];
+}
+- (void)activateContainerID:(NSString *)containerID forProfileAtIndex:(NSUInteger)index {
+    NSMutableArray *profiles = [self mutableProfiles]; if (index >= profiles.count || !containerID.length) return;
+    NSMutableDictionary *profile = [profiles[index] mutableCopy]; BOOL exists = NO; for (NSDictionary *container in [self containersForProfileAtIndex:index]) if ([container[@"id"] isEqual:containerID]) { exists = YES; break; } if (!exists) return; profile[@"activeContainer"] = containerID; profiles[index] = profile; self.data[@"profiles"] = profiles; [self save];
+}
+- (void)deleteContainerID:(NSString *)containerID forProfileAtIndex:(NSUInteger)index {
+    NSMutableArray *profiles = [self mutableProfiles]; if (index >= profiles.count || !containerID.length) return;
+    NSMutableDictionary *profile = [profiles[index] mutableCopy]; NSMutableArray *containers = [[self containersForProfileAtIndex:index] mutableCopy]; if (containers.count <= 1) return; NSUInteger removeIndex = [containers indexOfObjectPassingTest:^BOOL(NSDictionary *item, NSUInteger idx, BOOL *stop) { return [item[@"id"] isEqual:containerID]; }]; if (removeIndex == NSNotFound) return; [containers removeObjectAtIndex:removeIndex]; profile[@"containers"] = containers; if ([profile[@"activeContainer"] isEqual:containerID]) profile[@"activeContainer"] = containers.firstObject[@"id"]; profiles[index] = profile; self.data[@"profiles"] = profiles; [self save];
+}
 - (NSURL *)exportBackup {
     NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"ChameleonBackup.json"];
     NSData *json = [NSJSONSerialization dataWithJSONObject:self.data options:NSJSONWritingPrettyPrinted error:nil]; [json writeToFile:path atomically:YES]; return [NSURL fileURLWithPath:path];
@@ -90,6 +124,6 @@ static NSString *const CHStorePath = @"/var/mobile/Library/Preferences/com.flipa
         if (error) *error = [NSError errorWithDomain:@"ChameleonBackup" code:1 userInfo:@{NSLocalizedDescriptionKey: @"Backup does not contain a valid profiles array."}];
         return NO;
     }
-    self.data = [incoming mutableCopy]; if (!self.data[@"schema"]) self.data[@"schema"] = @1; [self save]; return YES;
+    self.data = [incoming mutableCopy]; if (!self.data[@"schema"]) self.data[@"schema"] = @2; [self save]; return YES;
 }
 @end
