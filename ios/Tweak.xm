@@ -14,7 +14,7 @@ static void CHRecordRuntimeState(void) {
     }
     store[@"runtime"] = @{
         @"component": @"ProfileRuntime",
-        @"version": @"0.5.1",
+        @"version": @"0.5.2",
         @"lastStart": @([[NSDate date] timeIntervalSince1970]),
         @"activeProfile": activeProfileID,
         @"activeContainer": activeContainerID,
