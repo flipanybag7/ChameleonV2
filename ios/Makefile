@@ -6,7 +6,7 @@ include $(THEOS)/makefiles/common.mk
 APPLICATION_NAME = Chameleon
 Chameleon_FILES = app/main.m app/CHAppDelegate.m app/CHRootViewController.m app/CHProfileStore.m app/CHInstalledAppCatalog.m app/CHAppLibraryController.m app/CHMapController.m
 Chameleon_CFLAGS = -fobjc-arc
-Chameleon_FRAMEWORKS = UIKit Foundation UniformTypeIdentifiers MapKit CoreLocation
+Chameleon_FRAMEWORKS = UIKit Foundation UniformTypeIdentifiers MapKit CoreLocation WebKit
 Chameleon_CODESIGN_FLAGS = -Sapp/Chameleon.entitlements
 Chameleon_INSTALL_PATH = /Applications
 Chameleon_RESOURCE_DIRS = app/Resources
