@@ -1,3 +1,3 @@
 #import <UIKit/UIKit.h>
-@interface CHRootViewController : UITableViewController
+@interface CHRootViewController : UIViewController
 @end
