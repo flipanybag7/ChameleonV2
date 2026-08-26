@@ -43,7 +43,7 @@ static NSString *const CHStorePath = @"/var/mobile/Library/Preferences/com.flipa
 - (void)addProfileNamed:(NSString *)name {
     NSMutableArray *profiles = [self mutableProfiles];
     NSString *profileID = NSUUID.UUID.UUIDString.lowercaseString;
-    [profiles addObject:[@{@"id": profileID, @"name": name, @"apps": [NSMutableArray array], @"proxy": [NSMutableDictionary dictionary], @"location": [NSMutableDictionary dictionary], @"metadata": [NSMutableDictionary dictionary], @"containers": [NSMutableArray arrayWithObject:@{@"id": profileID, @"name": @"Default", @"createdAt": @([[NSDate date] timeIntervalSince1970])}], @"activeContainer": profileID} mutableCopy]];
+    [profiles addObject:[@{@"id": profileID, @"name": name, @"apps": [NSMutableArray array], @"proxy": [NSMutableDictionary dictionary], @"location": [NSMutableDictionary dictionary], @"metadata": [NSMutableDictionary dictionary], @"containerOptions": [NSMutableDictionary dictionary], @"containers": [NSMutableArray arrayWithObject:@{@"id": profileID, @"name": @"Default", @"createdAt": @([[NSDate date] timeIntervalSince1970])}], @"activeContainer": profileID} mutableCopy]];
     self.data[@"profiles"] = profiles; [self save];
 }
 - (void)renameProfileAtIndex:(NSUInteger)index name:(NSString *)name {
@@ -109,6 +109,10 @@ static NSString *const CHStorePath = @"/var/mobile/Library/Preferences/com.flipa
 - (void)deleteContainerID:(NSString *)containerID forProfileAtIndex:(NSUInteger)index {
     NSMutableArray *profiles = [self mutableProfiles]; if (index >= profiles.count || !containerID.length) return;
     NSMutableDictionary *profile = [profiles[index] mutableCopy]; NSMutableArray *containers = [[self containersForProfileAtIndex:index] mutableCopy]; if (containers.count <= 1) return; NSUInteger removeIndex = [containers indexOfObjectPassingTest:^BOOL(NSDictionary *item, NSUInteger idx, BOOL *stop) { return [item[@"id"] isEqual:containerID]; }]; if (removeIndex == NSNotFound) return; [containers removeObjectAtIndex:removeIndex]; profile[@"containers"] = containers; if ([profile[@"activeContainer"] isEqual:containerID]) profile[@"activeContainer"] = containers.firstObject[@"id"]; profiles[index] = profile; self.data[@"profiles"] = profiles; [self save];
+}
+- (void)setContainerOption:(BOOL)enabled key:(NSString *)key forProfileAtIndex:(NSUInteger)index {
+    NSMutableArray *profiles = [self mutableProfiles]; if (index >= profiles.count || !key.length) return;
+    NSMutableDictionary *profile = [profiles[index] mutableCopy]; NSMutableDictionary *options = [profile[@"containerOptions"] mutableCopy] ?: [NSMutableDictionary dictionary]; options[key] = @(enabled); profile[@"containerOptions"] = options; profiles[index] = profile; self.data[@"profiles"] = profiles; [self save];
 }
 - (NSURL *)exportBackup {
     NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"ChameleonBackup.json"];

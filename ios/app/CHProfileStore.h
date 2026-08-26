@@ -21,6 +21,7 @@
 - (void)createContainerNamed:(NSString *)name forProfileAtIndex:(NSUInteger)index;
 - (void)activateContainerID:(NSString *)containerID forProfileAtIndex:(NSUInteger)index;
 - (void)deleteContainerID:(NSString *)containerID forProfileAtIndex:(NSUInteger)index;
+- (void)setContainerOption:(BOOL)enabled key:(NSString *)key forProfileAtIndex:(NSUInteger)index;
 - (NSURL *)exportBackup;
 - (BOOL)importBackupFromURL:(NSURL *)url error:(NSError **)error;
 @end
