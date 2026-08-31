@@ -21,9 +21,13 @@
             BOOL userContainer = [path containsString:@"/var/containers/Bundle/Application/"] || [path containsString:@"/private/var/containers/Bundle/Application/"];
             if (!bundleID.length || !userApplication || !userContainer) continue;
             NSString *name = [app valueForKey:@"localizedName"] ?: bundleID;
+            NSURL *dataURL = nil;
+            @try { dataURL = [app valueForKey:@"dataContainerURL"]; } @catch (__unused NSException *exception) {}
+            if (!dataURL) { @try { dataURL = [app valueForKey:@"containerURL"]; } @catch (__unused NSException *exception) {} }
             UIImage *icon = nil;
             if ([UIImage respondsToSelector:@selector(_applicationIconImageForBundleIdentifier:format:scale:)]) icon = [UIImage _applicationIconImageForBundleIdentifier:bundleID format:2 scale:UIScreen.mainScreen.scale];
             NSMutableDictionary *item = [@{@"name": name, @"bundleID": bundleID, @"path": path} mutableCopy];
+            if (dataURL.path.length) item[@"dataPath"] = dataURL.path;
             if (icon) item[@"icon"] = icon;
             [result addObject:item];
         } @catch (__unused NSException *exception) {}

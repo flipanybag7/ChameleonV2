@@ -17,7 +17,7 @@ The project does not implement jailbreak-detection bypass, anti-detection evasio
 
 ## Current status
 
-Version 1.0.0 uses an overview-first workflow. The dashboard shows only the currently running profile; installed applications live in a separate Applications screen, and every application opens its own list of profiles. Each profile has a dedicated setup page for activation, launch, device identity, proxy, location and editable profile metadata aliases. System applications and jailbreak utility/tweak bundles are filtered out. The location picker uses native MapKit with search and a tappable/draggable pin, so it no longer depends on a remote JavaScript map library.
+Version 1.0.1 uses an overview-first workflow. The dashboard shows only the currently running profile; installed applications live in a separate Applications screen, and every application opens its own list of profiles. Each profile has a dedicated setup page for activation, launch, device identity, proxy, location and editable profile metadata aliases. System applications and jailbreak utility/tweak bundles are filtered out. The location picker uses native MapKit with search and a tappable/draggable pin, so it no longer depends on a remote JavaScript map library.
 
 The device catalog includes coherent presets from iPhone 7 through iPhone 15 Pro Max, including Plus, X, XR, XS, mini, Pro, Pro Max, and second/third-generation SE variants.
 
@@ -70,29 +70,28 @@ target application is relaunched.
 
 ## App data containers
 
-`ProfileRuntime` includes an optional filesystem container for the injected
-application. Common pathname operations—including `open`, `openat`, `fopen`,
+`ProfileRuntime` includes a filesystem container for the injected application.
+New and migrated profiles enable container separation by default. Common
+pathname operations—including `open`, `openat`, `fopen`,
 `freopen`, `stat`, `lstat`, `fstatat`, `access`, `unlink`, `rename`, `mkdir`,
 `rmdir`, `opendir`, `readlink`, and `chmod`—that target the app's sandbox are
 redirected to:
 
 ```text
-/var/mobile/Library/Chameleon/Containers/<bundle-id>/<profile-id>/<container-id>/...
+<app-home>/Library/Chameleon/Containers/<bundle-id>/<profile-id>/<container-id>/...
 ```
 
-The active profile and active container IDs are included in the path, so each
+The tree stays inside the application's writable sandbox. The active profile
+and active container IDs are included in the path, so each
 container receives a separate tree even when it belongs to the same app profile.
 The hook is enabled only for the user application assigned to Chameleon's
 currently active profile; SpringBoard, Chameleon itself, and unrelated apps
 are left unchanged.
 
 Bundle resources and paths outside the app sandbox are not redirected. The
-container directory must be writable by the target process; create it before
-launching the app, for example:
-
-```sh
-mkdir -p /var/mobile/Library/Chameleon/Containers/com.example.app/<profile-id>/<container-id>
-```
+container is provisioned automatically before the runtime hooks are installed.
+Standard `NSUserDefaults` also uses a profile-specific suite, and Chameleon
+terminates a running target before opening the newly selected profile.
 
 This is pathname interposition, not a kernel sandbox. Relative `openat` calls
 against an already-open directory, direct syscalls, memory-mapped files, and

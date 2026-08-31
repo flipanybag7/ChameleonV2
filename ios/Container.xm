@@ -9,16 +9,19 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-// The container is deliberately scoped to the app's data directory.  Bundle
-// resources and system paths continue to resolve normally, which is required
-// for an injected tweak to keep the host app launchable.
-static NSString *const CHContainerBase = @"/var/mobile/Library/Chameleon/Containers";
+// Container trees live inside the target app's own writable sandbox. Keeping
+// them under Library/Chameleon avoids sandbox-denied writes while still giving
+// every profile a distinct pathname tree.
 static NSString *const CHStorePath = @"/var/mobile/Library/Preferences/com.flipanybag7.chameleon.plist";
 static BOOL CHContainerEnabled;
 static NSString *CHResolvedContainerRoot;
+static NSString *CHDefaultsSuite;
+static NSUserDefaults *CHContainerDefaults;
 
 typedef int (*CHOpenFn)(const char *, int, ...);
 typedef int (*CHOpenAtFn)(int, const char *, int, ...);
+typedef int (*CHOpenDProtectedFn)(const char *, int, int, int, ...);
+typedef int (*CHOpenAtDProtectedFn)(int, const char *, int, int, int, ...);
 typedef int (*CHStatFn)(const char *, struct stat *);
 typedef int (*CHFstatAtFn)(int, const char *, struct stat *, int);
 typedef FILE *(*CHFopenFn)(const char *, const char *);
@@ -30,9 +33,12 @@ typedef int (*CHMkdirFn)(const char *, mode_t);
 typedef DIR *(*CHOpendirFn)(const char *);
 typedef ssize_t (*CHReadlinkFn)(const char *, char *, size_t);
 typedef int (*CHChmodFn)(const char *, mode_t);
+typedef int (*CHCreatFn)(const char *, mode_t);
 
 static CHOpenFn CHOriginalOpen;
 static CHOpenAtFn CHOriginalOpenAt;
+static CHOpenDProtectedFn CHOriginalOpenDProtected;
+static CHOpenAtDProtectedFn CHOriginalOpenAtDProtected;
 static CHStatFn CHOriginalStat;
 static CHStatFn CHOriginalLstat;
 static CHFstatAtFn CHOriginalFstatAt;
@@ -46,6 +52,8 @@ static CHMkdirFn CHOriginalMkdir;
 static CHOpendirFn CHOriginalOpendir;
 static CHReadlinkFn CHOriginalReadlink;
 static CHChmodFn CHOriginalChmod;
+static CHCreatFn CHOriginalCreat;
+static CHPathIntFn CHOriginalRemove;
 
 static BOOL CHHasPathPrefix(NSString *path, NSString *prefix) {
     return [path isEqualToString:prefix] || [path hasPrefix:[prefix stringByAppendingString:@"/"]];
@@ -58,9 +66,25 @@ static NSString *CHContainerRoot(void) {
     if (bundleID.length == 0 || profileID.length == 0) return nil;
     NSString *containerID = profileID;
     for (NSDictionary *profile in store[@"profiles"]) if ([profile[@"id"] isEqual:profileID]) { containerID = profile[@"activeContainer"] ?: [profile[@"containers"] firstObject][@"id"] ?: profileID; break; }
-    return [[[[CHContainerBase stringByAppendingPathComponent:bundleID]
+    NSString *containerBase = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Chameleon/Containers"];
+    return [[[[containerBase stringByAppendingPathComponent:bundleID]
               stringByAppendingPathComponent:profileID]
              stringByAppendingPathComponent:containerID] stringByStandardizingPath];
+}
+
+static NSString *CHContainerDefaultsSuite(void) {
+    NSString *bundleID = NSBundle.mainBundle.bundleIdentifier;
+    NSDictionary *store = [NSDictionary dictionaryWithContentsOfFile:CHStorePath];
+    NSString *profileID = store[@"activeProfile"];
+    if (!bundleID.length || !profileID.length) return nil;
+    NSString *containerID = profileID;
+    for (NSDictionary *profile in store[@"profiles"]) {
+        if ([profile[@"id"] isEqual:profileID]) {
+            containerID = profile[@"activeContainer"] ?: [profile[@"containers"] firstObject][@"id"] ?: profileID;
+            break;
+        }
+    }
+    return [NSString stringWithFormat:@"com.flipanybag7.chameleon.defaults.%@.%@.%@", bundleID, profileID, containerID];
 }
 
 static NSString *CHMapPath(const char *rawPath) {
@@ -121,6 +145,26 @@ static int CHOpenAt(int dirfd, const char *path, int flags, ...) {
     return CHOriginalOpenAt(dirfd, target, flags);
 }
 
+static int CHOpenDProtected(const char *path, int flags, int protectionClass, int dpFlags, ...) {
+    NSString *mapped = nil;
+    const char *target = CHMappedCString(path, &mapped);
+    if ((flags & O_CREAT) != 0) {
+        va_list args; va_start(args, dpFlags); mode_t mode = (mode_t)va_arg(args, int); va_end(args);
+        return CHOriginalOpenDProtected(target, flags, protectionClass, dpFlags, mode);
+    }
+    return CHOriginalOpenDProtected(target, flags, protectionClass, dpFlags);
+}
+
+static int CHOpenAtDProtected(int dirfd, const char *path, int flags, int protectionClass, int dpFlags, ...) {
+    NSString *mapped = nil;
+    const char *target = (dirfd == AT_FDCWD || (path && path[0] == '/')) ? CHMappedCString(path, &mapped) : path;
+    if ((flags & O_CREAT) != 0) {
+        va_list args; va_start(args, dpFlags); mode_t mode = (mode_t)va_arg(args, int); va_end(args);
+        return CHOriginalOpenAtDProtected(dirfd, target, flags, protectionClass, dpFlags, mode);
+    }
+    return CHOriginalOpenAtDProtected(dirfd, target, flags, protectionClass, dpFlags);
+}
+
 static int CHStat(const char *path, struct stat *buffer) {
     NSString *mapped = nil;
     return CHOriginalStat(CHMappedCString(path, &mapped), buffer);
@@ -147,6 +191,8 @@ static int CHMkdir(const char *path, mode_t mode) { NSString *mapped = nil; retu
 static DIR *CHOpendir(const char *path) { NSString *mapped = nil; return CHOriginalOpendir(CHMappedCString(path, &mapped)); }
 static ssize_t CHReadlink(const char *path, char *buffer, size_t size) { NSString *mapped = nil; return CHOriginalReadlink(CHMappedCString(path, &mapped), buffer, size); }
 static int CHChmod(const char *path, mode_t mode) { NSString *mapped = nil; return CHOriginalChmod(CHMappedCString(path, &mapped), mode); }
+static int CHCreat(const char *path, mode_t mode) { NSString *mapped = nil; return CHOriginalCreat(CHMappedCString(path, &mapped), mode); }
+static int CHRemove(const char *path) { NSString *mapped = nil; return CHOriginalRemove(CHMappedCString(path, &mapped)); }
 
 static void CHInstallHook(const char *symbol, void *replacement, void **original) {
     void *address = dlsym(RTLD_DEFAULT, symbol);
@@ -169,11 +215,25 @@ static BOOL CHIsSelectedUserApp(void) {
     return NO;
 }
 
+%group CHContainerFoundationHooks
+%hook NSUserDefaults
++ (NSUserDefaults *)standardUserDefaults {
+    if (!CHContainerEnabled || !CHDefaultsSuite.length) return %orig;
+    @synchronized (NSUserDefaults.class) {
+        if (!CHContainerDefaults) CHContainerDefaults = [[NSUserDefaults alloc] initWithSuiteName:CHDefaultsSuite];
+        if (CHContainerDefaults) return CHContainerDefaults;
+        return %orig;
+    }
+}
+%end
+%end
+
 %ctor {
     @autoreleasepool {
         CHContainerEnabled = CHIsSelectedUserApp();
         if (CHContainerEnabled) {
             CHResolvedContainerRoot = [CHContainerRoot() copy];
+            CHDefaultsSuite = [CHContainerDefaultsSuite() copy];
             NSString *root = CHResolvedContainerRoot;
             [[NSFileManager defaultManager] createDirectoryAtPath:root
                                        withIntermediateDirectories:YES
@@ -185,6 +245,9 @@ static BOOL CHIsSelectedUserApp(void) {
             }
             CHInstallHook("open", (void *)&CHOpen, (void **)&CHOriginalOpen);
             CHInstallHook("openat", (void *)&CHOpenAt, (void **)&CHOriginalOpenAt);
+            CHInstallHook("open_dprotected_np", (void *)&CHOpenDProtected, (void **)&CHOriginalOpenDProtected);
+            CHInstallHook("openat_dprotected_np", (void *)&CHOpenAtDProtected, (void **)&CHOriginalOpenAtDProtected);
+            CHInstallHook("creat", (void *)&CHCreat, (void **)&CHOriginalCreat);
             CHInstallHook("fopen", (void *)&CHFopen, (void **)&CHOriginalFopen);
             CHInstallHook("freopen", (void *)&CHFreopen, (void **)&CHOriginalFreopen);
             CHInstallHook("stat", (void *)&CHStat, (void **)&CHOriginalStat);
@@ -192,12 +255,14 @@ static BOOL CHIsSelectedUserApp(void) {
             CHInstallHook("fstatat", (void *)&CHFstatAt, (void **)&CHOriginalFstatAt);
             CHInstallHook("access", (void *)&CHAccess, (void **)&CHOriginalAccess);
             CHInstallHook("unlink", (void *)&CHUnlink, (void **)&CHOriginalUnlink);
+            CHInstallHook("remove", (void *)&CHRemove, (void **)&CHOriginalRemove);
             CHInstallHook("rename", (void *)&CHRename, (void **)&CHOriginalRename);
             CHInstallHook("mkdir", (void *)&CHMkdir, (void **)&CHOriginalMkdir);
             CHInstallHook("rmdir", (void *)&CHRmdir, (void **)&CHOriginalRmdir);
             CHInstallHook("opendir", (void *)&CHOpendir, (void **)&CHOriginalOpendir);
             CHInstallHook("readlink", (void *)&CHReadlink, (void **)&CHOriginalReadlink);
             CHInstallHook("chmod", (void *)&CHChmod, (void **)&CHOriginalChmod);
+            %init(CHContainerFoundationHooks);
         }
     }
 }

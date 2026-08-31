@@ -16,15 +16,17 @@ static NSMutableDictionary *CHDefaultDeviceProfile(void) {
 
 @implementation CHProfileStore
 - (void)migrateProfiles {
+    NSInteger previousSchema = [self.data[@"schema"] integerValue];
     NSMutableArray *migratedProfiles = [self.data[@"profiles"] mutableCopy] ?: [NSMutableArray array];
     for (NSUInteger i = 0; i < migratedProfiles.count; i++) {
         NSMutableDictionary *profile = [migratedProfiles[i] mutableCopy];
         if (![profile[@"containers"] isKindOfClass:NSArray.class]) { NSString *containerID = profile[@"id"] ?: NSUUID.UUID.UUIDString.lowercaseString; profile[@"containers"] = [NSMutableArray arrayWithObject:@{@"id": containerID, @"name": @"Default", @"createdAt": @([[NSDate date] timeIntervalSince1970])}]; }
         if (!profile[@"activeContainer"]) profile[@"activeContainer"] = [profile[@"containers"] firstObject][@"id"];
         NSMutableDictionary *device = CHDefaultDeviceProfile(); if ([profile[@"device"] isKindOfClass:NSDictionary.class]) [device addEntriesFromDictionary:profile[@"device"]]; profile[@"device"] = device;
+        NSMutableDictionary *options = [profile[@"containerOptions"] mutableCopy] ?: [NSMutableDictionary dictionary]; if (previousSchema < 4) options[@"containerProtection"] = @YES; profile[@"containerOptions"] = options;
         migratedProfiles[i] = profile;
     }
-    self.data[@"profiles"] = migratedProfiles; self.data[@"schema"] = @3;
+    self.data[@"profiles"] = migratedProfiles; self.data[@"schema"] = @4;
 }
 - (instancetype)init {
     if ((self = [super init])) {
@@ -50,7 +52,7 @@ static NSMutableDictionary *CHDefaultDeviceProfile(void) {
 - (void)addProfileNamed:(NSString *)name {
     NSMutableArray *profiles = [self mutableProfiles];
     NSString *profileID = NSUUID.UUID.UUIDString.lowercaseString;
-    [profiles addObject:[@{@"id": profileID, @"name": name, @"apps": [NSMutableArray array], @"proxy": [NSMutableDictionary dictionary], @"location": [NSMutableDictionary dictionary], @"metadata": [NSMutableDictionary dictionary], @"device": CHDefaultDeviceProfile(), @"containerOptions": [NSMutableDictionary dictionary], @"containers": [NSMutableArray arrayWithObject:@{@"id": profileID, @"name": @"Default", @"createdAt": @([[NSDate date] timeIntervalSince1970])}], @"activeContainer": profileID} mutableCopy]];
+    [profiles addObject:[@{@"id": profileID, @"name": name, @"apps": [NSMutableArray array], @"proxy": [NSMutableDictionary dictionary], @"location": [NSMutableDictionary dictionary], @"metadata": [NSMutableDictionary dictionary], @"device": CHDefaultDeviceProfile(), @"containerOptions": [@{@"containerProtection": @YES} mutableCopy], @"containers": [NSMutableArray arrayWithObject:@{@"id": profileID, @"name": @"Default", @"createdAt": @([[NSDate date] timeIntervalSince1970])}], @"activeContainer": profileID} mutableCopy]];
     self.data[@"profiles"] = profiles; [self save];
 }
 - (void)renameProfileAtIndex:(NSUInteger)index name:(NSString *)name {
