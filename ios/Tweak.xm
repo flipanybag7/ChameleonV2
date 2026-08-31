@@ -29,7 +29,10 @@ static void CHProfileChanged(CFNotificationCenterRef center, void *observer, CFS
 
 %ctor {
     @autoreleasepool {
-        CHRecordRuntimeState();
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, CHProfileChanged, CFSTR("com.flipanybag7.chameleon.profileChanged"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
+        NSString *bundleID = NSBundle.mainBundle.bundleIdentifier;
+        if ([bundleID isEqualToString:@"com.apple.springboard"] || [bundleID isEqualToString:@"com.flipanybag7.chameleon.app"]) {
+            CHRecordRuntimeState();
+            CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, CHProfileChanged, CFSTR("com.flipanybag7.chameleon.profileChanged"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
+        }
     }
 }

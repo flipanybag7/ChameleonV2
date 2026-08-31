@@ -1,5 +1,6 @@
 #import "CHProfileStore.h"
 #import <CoreFoundation/CoreFoundation.h>
+#import <UIKit/UIKit.h>
 
 static NSString *const CHStorePath = @"/var/mobile/Library/Preferences/com.flipanybag7.chameleon.plist";
 
@@ -7,23 +8,29 @@ static NSString *const CHStorePath = @"/var/mobile/Library/Preferences/com.flipa
 @property(nonatomic, strong) NSMutableDictionary *data;
 @end
 
+static NSMutableDictionary *CHDefaultDeviceProfile(void) {
+    UIScreen *screen = UIScreen.mainScreen; NSLocale *locale = NSLocale.currentLocale;
+    NSString *region = [locale objectForKey:NSLocaleCountryCode] ?: @"";
+    return [@{@"enabled": @NO, @"deviceModel": UIDevice.currentDevice.model ?: @"iPhone", @"marketingName": @"", @"machine": @"", @"hardwareModel": @"", @"systemVersion": UIDevice.currentDevice.systemVersion ?: @"", @"physicalMemoryGB": @((double)NSProcessInfo.processInfo.physicalMemory / 1073741824.0), @"screenWidth": @((NSInteger)screen.nativeBounds.size.width), @"screenHeight": @((NSInteger)screen.nativeBounds.size.height), @"screenScale": @(screen.nativeScale), @"ppi": @0, @"idfvSeed": NSUUID.UUID.UUIDString, @"serialFixture": @"", @"imeiFixture": @"", @"meidFixture": @"", @"wifiMACFixture": @"", @"carrierName": @"", @"mcc": @"", @"mnc": @"", @"isoCountryCode": region.lowercaseString, @"localeIdentifier": locale.localeIdentifier ?: @"en_US", @"regionCode": region, @"timeZone": NSTimeZone.localTimeZone.name ?: @"UTC"} mutableCopy];
+}
+
 @implementation CHProfileStore
+- (void)migrateProfiles {
+    NSMutableArray *migratedProfiles = [self.data[@"profiles"] mutableCopy] ?: [NSMutableArray array];
+    for (NSUInteger i = 0; i < migratedProfiles.count; i++) {
+        NSMutableDictionary *profile = [migratedProfiles[i] mutableCopy];
+        if (![profile[@"containers"] isKindOfClass:NSArray.class]) { NSString *containerID = profile[@"id"] ?: NSUUID.UUID.UUIDString.lowercaseString; profile[@"containers"] = [NSMutableArray arrayWithObject:@{@"id": containerID, @"name": @"Default", @"createdAt": @([[NSDate date] timeIntervalSince1970])}]; }
+        if (!profile[@"activeContainer"]) profile[@"activeContainer"] = [profile[@"containers"] firstObject][@"id"];
+        NSMutableDictionary *device = CHDefaultDeviceProfile(); if ([profile[@"device"] isKindOfClass:NSDictionary.class]) [device addEntriesFromDictionary:profile[@"device"]]; profile[@"device"] = device;
+        migratedProfiles[i] = profile;
+    }
+    self.data[@"profiles"] = migratedProfiles; self.data[@"schema"] = @3;
+}
 - (instancetype)init {
     if ((self = [super init])) {
         _data = [NSMutableDictionary dictionaryWithContentsOfFile:CHStorePath] ?: [NSMutableDictionary dictionary];
         if (!_data[@"profiles"]) _data[@"profiles"] = [NSMutableArray array];
-        if (!_data[@"schema"]) _data[@"schema"] = @2;
-        NSMutableArray *migratedProfiles = [_data[@"profiles"] mutableCopy] ?: [NSMutableArray array];
-        for (NSUInteger i = 0; i < migratedProfiles.count; i++) {
-            NSMutableDictionary *profile = [migratedProfiles[i] mutableCopy];
-            if (![profile[@"containers"] isKindOfClass:NSArray.class]) {
-                NSString *containerID = profile[@"id"] ?: NSUUID.UUID.UUIDString.lowercaseString;
-                profile[@"containers"] = [NSMutableArray arrayWithObject:@{@"id": containerID, @"name": @"Default", @"createdAt": @([[NSDate date] timeIntervalSince1970])}];
-            }
-            if (!profile[@"activeContainer"]) profile[@"activeContainer"] = [profile[@"containers"] firstObject][@"id"];
-            migratedProfiles[i] = profile;
-        }
-        _data[@"profiles"] = migratedProfiles;
+        [self migrateProfiles];
         [self save];
     }
     return self;
@@ -43,7 +50,7 @@ static NSString *const CHStorePath = @"/var/mobile/Library/Preferences/com.flipa
 - (void)addProfileNamed:(NSString *)name {
     NSMutableArray *profiles = [self mutableProfiles];
     NSString *profileID = NSUUID.UUID.UUIDString.lowercaseString;
-    [profiles addObject:[@{@"id": profileID, @"name": name, @"apps": [NSMutableArray array], @"proxy": [NSMutableDictionary dictionary], @"location": [NSMutableDictionary dictionary], @"metadata": [NSMutableDictionary dictionary], @"containerOptions": [NSMutableDictionary dictionary], @"containers": [NSMutableArray arrayWithObject:@{@"id": profileID, @"name": @"Default", @"createdAt": @([[NSDate date] timeIntervalSince1970])}], @"activeContainer": profileID} mutableCopy]];
+    [profiles addObject:[@{@"id": profileID, @"name": name, @"apps": [NSMutableArray array], @"proxy": [NSMutableDictionary dictionary], @"location": [NSMutableDictionary dictionary], @"metadata": [NSMutableDictionary dictionary], @"device": CHDefaultDeviceProfile(), @"containerOptions": [NSMutableDictionary dictionary], @"containers": [NSMutableArray arrayWithObject:@{@"id": profileID, @"name": @"Default", @"createdAt": @([[NSDate date] timeIntervalSince1970])}], @"activeContainer": profileID} mutableCopy]];
     self.data[@"profiles"] = profiles; [self save];
 }
 - (void)renameProfileAtIndex:(NSUInteger)index name:(NSString *)name {
@@ -54,6 +61,14 @@ static NSString *const CHStorePath = @"/var/mobile/Library/Preferences/com.flipa
     NSMutableArray *profiles = [self mutableProfiles]; if (index >= profiles.count || !key.length) return;
     NSMutableDictionary *profile = [profiles[index] mutableCopy]; NSMutableDictionary *metadata = [profile[@"metadata"] mutableCopy] ?: [NSMutableDictionary dictionary]; metadata[key] = value ?: @""; profile[@"metadata"] = metadata; profiles[index] = profile; self.data[@"profiles"] = profiles; [self save];
 }
+- (void)setDeviceValue:(id)value forKey:(NSString *)key profileAtIndex:(NSUInteger)index {
+    if (!key.length) return; [self setDeviceValues:@{key: value ?: @""} profileAtIndex:index];
+}
+- (void)setDeviceValues:(NSDictionary *)values profileAtIndex:(NSUInteger)index {
+    NSMutableArray *profiles = [self mutableProfiles]; if (index >= profiles.count || ![values isKindOfClass:NSDictionary.class]) return;
+    NSMutableDictionary *profile = [profiles[index] mutableCopy]; NSMutableDictionary *device = [profile[@"device"] mutableCopy] ?: CHDefaultDeviceProfile(); [device addEntriesFromDictionary:values]; profile[@"device"] = device; profiles[index] = profile; self.data[@"profiles"] = profiles; [self save];
+}
+- (void)setDeviceEnabled:(BOOL)enabled profileAtIndex:(NSUInteger)index { [self setDeviceValue:@(enabled) forKey:@"enabled" profileAtIndex:index]; }
 - (void)deleteProfileAtIndex:(NSUInteger)index {
     NSMutableArray *profiles = [self mutableProfiles]; if (index >= profiles.count) return;
     NSString *identifier = profiles[index][@"id"]; [profiles removeObjectAtIndex:index]; self.data[@"profiles"] = profiles;
@@ -128,6 +143,6 @@ static NSString *const CHStorePath = @"/var/mobile/Library/Preferences/com.flipa
         if (error) *error = [NSError errorWithDomain:@"ChameleonBackup" code:1 userInfo:@{NSLocalizedDescriptionKey: @"Backup does not contain a valid profiles array."}];
         return NO;
     }
-    self.data = [incoming mutableCopy]; if (!self.data[@"schema"]) self.data[@"schema"] = @2; [self save]; return YES;
+    self.data = [incoming mutableCopy]; [self migrateProfiles]; [self save]; return YES;
 }
 @end

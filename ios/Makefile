@@ -14,9 +14,9 @@ Chameleon_RESOURCE_DIRS = app/Resources
 include $(THEOS_MAKE_PATH)/application.mk
 
 TWEAK_NAME = ProfileRuntime
-ProfileRuntime_FILES = Tweak.xm
+ProfileRuntime_FILES = Tweak.xm Container.xm DeviceIdentity.xm
 ProfileRuntime_CFLAGS = -fobjc-arc
-ProfileRuntime_FRAMEWORKS = Foundation
+ProfileRuntime_FRAMEWORKS = Foundation UIKit CoreTelephony
 
 include $(THEOS_MAKE_PATH)/tweak.mk
 
