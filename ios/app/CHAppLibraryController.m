@@ -8,7 +8,12 @@
 static void CHTerminateApplicationIfRunning(NSString *bundleID) {
     Class serviceClass = NSClassFromString(@"FBSSystemService");
     SEL sharedSelector = NSSelectorFromString(@"sharedService");
-    id service = [serviceClass respondsToSelector:sharedSelector] ? [serviceClass performSelector:sharedSelector] : nil;
+    id service = nil;
+    if ([serviceClass respondsToSelector:sharedSelector]) {
+        IMP implementation = [serviceClass methodForSelector:sharedSelector];
+        id (*sharedService)(id, SEL) = (id (*)(id, SEL))implementation;
+        service = sharedService(serviceClass, sharedSelector);
+    }
     SEL terminateSelector = NSSelectorFromString(@"terminateApplication:forReason:andReport:withDescription:");
     NSMethodSignature *signature = [service methodSignatureForSelector:terminateSelector];
     if (!service || !signature || ![service respondsToSelector:terminateSelector]) return;

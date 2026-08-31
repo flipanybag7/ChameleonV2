@@ -17,7 +17,7 @@ The project does not implement jailbreak-detection bypass, anti-detection evasio
 
 ## Current status
 
-Version 1.0.1 uses an overview-first workflow. The dashboard shows only the currently running profile; installed applications live in a separate Applications screen, and every application opens its own list of profiles. Each profile has a dedicated setup page for activation, launch, device identity, proxy, location and editable profile metadata aliases. System applications and jailbreak utility/tweak bundles are filtered out. The location picker uses native MapKit with search and a tappable/draggable pin, so it no longer depends on a remote JavaScript map library.
+Version 1.0.1 uses an overview-first workflow. The dashboard shows only the currently running profile; installed applications live in a separate Applications screen, and every application opens its own list of profiles. Each profile has a dedicated setup page for activation, launch, device identity, proxy, location and editable profile metadata aliases. System applications and jailbreak utility/tweak bundles are filtered out. The location picker bundles Leaflet locally, uses OpenStreetMap tiles, and provides native search plus a tappable/draggable pin. It does not depend on downloading its map engine at runtime.
 
 The device catalog includes coherent presets from iPhone 7 through iPhone 15 Pro Max, including Plus, X, XR, XS, mini, Pro, Pro Max, and second/third-generation SE variants.
 
