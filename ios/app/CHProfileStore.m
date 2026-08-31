@@ -85,15 +85,19 @@ static NSMutableDictionary *CHDefaultDeviceProfile(void) {
 }
 - (void)setProxyHost:(NSString *)host port:(NSInteger)port forProfileAtIndex:(NSUInteger)index {
     NSMutableArray *profiles = [self mutableProfiles]; if (index >= profiles.count) return;
-    NSMutableDictionary *profile = [profiles[index] mutableCopy]; BOOL enabled = [profile[@"proxy"][@"enabled"] boolValue]; profile[@"proxy"] = @{@"host": host ?: @"", @"port": @(port), @"username": @"", @"password": @"", @"enabled": @(enabled)}; profiles[index] = profile; self.data[@"profiles"] = profiles; [self save];
+    NSDictionary *proxy = profiles[index][@"proxy"]; [self setProxyType:proxy[@"type"] ?: @"http" host:host port:port username:@"" password:@"" forProfileAtIndex:index];
 }
 - (void)setProxyEnabled:(BOOL)enabled forProfileAtIndex:(NSUInteger)index {
     NSMutableArray *profiles = [self mutableProfiles]; if (index >= profiles.count) return;
     NSMutableDictionary *profile = [profiles[index] mutableCopy]; NSMutableDictionary *proxy = [profile[@"proxy"] mutableCopy] ?: [NSMutableDictionary dictionary]; proxy[@"enabled"] = @(enabled); profile[@"proxy"] = proxy; profiles[index] = profile; self.data[@"profiles"] = profiles; [self save];
 }
 - (void)setProxyHost:(NSString *)host port:(NSInteger)port username:(NSString *)username password:(NSString *)password forProfileAtIndex:(NSUInteger)index {
+    NSString *type = index < self.profiles.count ? self.profiles[index][@"proxy"][@"type"] : nil;
+    [self setProxyType:type ?: @"http" host:host port:port username:username password:password forProfileAtIndex:index];
+}
+- (void)setProxyType:(NSString *)type host:(NSString *)host port:(NSInteger)port username:(NSString *)username password:(NSString *)password forProfileAtIndex:(NSUInteger)index {
     NSMutableArray *profiles = [self mutableProfiles]; if (index >= profiles.count) return;
-    NSMutableDictionary *profile = [profiles[index] mutableCopy]; BOOL enabled = [profile[@"proxy"][@"enabled"] boolValue]; profile[@"proxy"] = @{@"host": host ?: @"", @"port": @(port), @"username": username ?: @"", @"password": password ?: @"", @"enabled": @(enabled)}; profiles[index] = profile; self.data[@"profiles"] = profiles; [self save];
+    NSMutableDictionary *profile = [profiles[index] mutableCopy]; BOOL enabled = [profile[@"proxy"][@"enabled"] boolValue]; NSString *normalized = type.lowercaseString; if (![@[@"http", @"https", @"socks5"] containsObject:normalized]) normalized = @"http"; profile[@"proxy"] = @{@"type": normalized, @"host": host ?: @"", @"port": @(port), @"username": username ?: @"", @"password": password ?: @"", @"enabled": @(enabled)}; profiles[index] = profile; self.data[@"profiles"] = profiles; [self save];
 }
 - (void)setLatitude:(double)latitude longitude:(double)longitude label:(NSString *)label forProfileAtIndex:(NSUInteger)index {
     NSMutableArray *profiles = [self mutableProfiles]; if (index >= profiles.count) return;

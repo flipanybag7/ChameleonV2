@@ -4,9 +4,9 @@ TARGET = iphone:clang:latest:15.0
 include $(THEOS)/makefiles/common.mk
 
 APPLICATION_NAME = Chameleon
-Chameleon_FILES = app/main.m app/CHAppDelegate.m app/CHRootViewController.m app/CHProfileStore.m app/CHInstalledAppCatalog.m app/CHAppLibraryController.m app/CHMapController.m
+Chameleon_FILES = app/main.m app/CHAppDelegate.m app/CHRootViewController.m app/CHProfileStore.m app/CHInstalledAppCatalog.m app/CHAppLibraryController.m app/CHMapController.m app/CHDeviceCatalog.m app/CHDeviceInformationProvider.m app/CHSettingsController.m
 Chameleon_CFLAGS = -fobjc-arc
-Chameleon_FRAMEWORKS = UIKit Foundation UniformTypeIdentifiers MapKit CoreLocation WebKit
+Chameleon_FRAMEWORKS = UIKit Foundation UniformTypeIdentifiers MapKit CoreLocation
 Chameleon_CODESIGN_FLAGS = -Sapp/Chameleon.entitlements
 Chameleon_INSTALL_PATH = /Applications
 Chameleon_RESOURCE_DIRS = app/Resources
@@ -14,9 +14,9 @@ Chameleon_RESOURCE_DIRS = app/Resources
 include $(THEOS_MAKE_PATH)/application.mk
 
 TWEAK_NAME = ProfileRuntime
-ProfileRuntime_FILES = Tweak.xm Container.xm DeviceIdentity.xm
+ProfileRuntime_FILES = Tweak.xm Container.xm DeviceIdentity.xm NetworkLocation.xm
 ProfileRuntime_CFLAGS = -fobjc-arc
-ProfileRuntime_FRAMEWORKS = Foundation UIKit CoreTelephony
+ProfileRuntime_FRAMEWORKS = Foundation UIKit CoreTelephony CoreLocation CFNetwork
 
 include $(THEOS_MAKE_PATH)/tweak.mk
 

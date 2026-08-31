@@ -2,8 +2,10 @@
 #import <substrate.h>
 
 #include <dlfcn.h>
+#include <dirent.h>
 #include <fcntl.h>
 #include <stdarg.h>
+#include <stdio.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -19,12 +21,31 @@ typedef int (*CHOpenFn)(const char *, int, ...);
 typedef int (*CHOpenAtFn)(int, const char *, int, ...);
 typedef int (*CHStatFn)(const char *, struct stat *);
 typedef int (*CHFstatAtFn)(int, const char *, struct stat *, int);
+typedef FILE *(*CHFopenFn)(const char *, const char *);
+typedef FILE *(*CHFreopenFn)(const char *, const char *, FILE *);
+typedef int (*CHPathIntFn)(const char *);
+typedef int (*CHAccessFn)(const char *, int);
+typedef int (*CHRenameFn)(const char *, const char *);
+typedef int (*CHMkdirFn)(const char *, mode_t);
+typedef DIR *(*CHOpendirFn)(const char *);
+typedef ssize_t (*CHReadlinkFn)(const char *, char *, size_t);
+typedef int (*CHChmodFn)(const char *, mode_t);
 
 static CHOpenFn CHOriginalOpen;
 static CHOpenAtFn CHOriginalOpenAt;
 static CHStatFn CHOriginalStat;
 static CHStatFn CHOriginalLstat;
 static CHFstatAtFn CHOriginalFstatAt;
+static CHFopenFn CHOriginalFopen;
+static CHFreopenFn CHOriginalFreopen;
+static CHPathIntFn CHOriginalUnlink;
+static CHPathIntFn CHOriginalRmdir;
+static CHAccessFn CHOriginalAccess;
+static CHRenameFn CHOriginalRename;
+static CHMkdirFn CHOriginalMkdir;
+static CHOpendirFn CHOriginalOpendir;
+static CHReadlinkFn CHOriginalReadlink;
+static CHChmodFn CHOriginalChmod;
 
 static BOOL CHHasPathPrefix(NSString *path, NSString *prefix) {
     return [path isEqualToString:prefix] || [path hasPrefix:[prefix stringByAppendingString:@"/"]];
@@ -88,7 +109,7 @@ static int CHOpenAt(int dirfd, const char *path, int flags, ...) {
     // other dirfds retain normal kernel semantics.
     NSString *mapped = nil;
     const char *target = path;
-    if (dirfd == AT_FDCWD) target = CHMappedCString(path, &mapped);
+    if (dirfd == AT_FDCWD || (path && path[0] == '/')) target = CHMappedCString(path, &mapped);
 
     if ((flags & O_CREAT) != 0) {
         va_list args;
@@ -112,9 +133,20 @@ static int CHLstat(const char *path, struct stat *buffer) {
 
 static int CHFstatAt(int dirfd, const char *path, struct stat *buffer, int flags) {
     NSString *mapped = nil;
-    const char *target = dirfd == AT_FDCWD ? CHMappedCString(path, &mapped) : path;
+    const char *target = (dirfd == AT_FDCWD || (path && path[0] == '/')) ? CHMappedCString(path, &mapped) : path;
     return CHOriginalFstatAt(dirfd, target, buffer, flags);
 }
+
+static FILE *CHFopen(const char *path, const char *mode) { NSString *mapped = nil; return CHOriginalFopen(CHMappedCString(path, &mapped), mode); }
+static FILE *CHFreopen(const char *path, const char *mode, FILE *stream) { NSString *mapped = nil; return CHOriginalFreopen(path ? CHMappedCString(path, &mapped) : NULL, mode, stream); }
+static int CHUnlink(const char *path) { NSString *mapped = nil; return CHOriginalUnlink(CHMappedCString(path, &mapped)); }
+static int CHRmdir(const char *path) { NSString *mapped = nil; return CHOriginalRmdir(CHMappedCString(path, &mapped)); }
+static int CHAccess(const char *path, int mode) { NSString *mapped = nil; return CHOriginalAccess(CHMappedCString(path, &mapped), mode); }
+static int CHRename(const char *oldPath, const char *newPath) { NSString *oldMapped = nil, *newMapped = nil; return CHOriginalRename(CHMappedCString(oldPath, &oldMapped), CHMappedCString(newPath, &newMapped)); }
+static int CHMkdir(const char *path, mode_t mode) { NSString *mapped = nil; return CHOriginalMkdir(CHMappedCString(path, &mapped), mode); }
+static DIR *CHOpendir(const char *path) { NSString *mapped = nil; return CHOriginalOpendir(CHMappedCString(path, &mapped)); }
+static ssize_t CHReadlink(const char *path, char *buffer, size_t size) { NSString *mapped = nil; return CHOriginalReadlink(CHMappedCString(path, &mapped), buffer, size); }
+static int CHChmod(const char *path, mode_t mode) { NSString *mapped = nil; return CHOriginalChmod(CHMappedCString(path, &mapped), mode); }
 
 static void CHInstallHook(const char *symbol, void *replacement, void **original) {
     void *address = dlsym(RTLD_DEFAULT, symbol);
@@ -147,11 +179,25 @@ static BOOL CHIsSelectedUserApp(void) {
                                        withIntermediateDirectories:YES
                                                         attributes:nil
                                                              error:nil];
+            for (NSString *relative in @[@"Documents", @"Library", @"Library/Caches", @"Library/Preferences", @"tmp"]) {
+                [[NSFileManager defaultManager] createDirectoryAtPath:[root stringByAppendingPathComponent:relative]
+                                           withIntermediateDirectories:YES attributes:nil error:nil];
+            }
             CHInstallHook("open", (void *)&CHOpen, (void **)&CHOriginalOpen);
             CHInstallHook("openat", (void *)&CHOpenAt, (void **)&CHOriginalOpenAt);
+            CHInstallHook("fopen", (void *)&CHFopen, (void **)&CHOriginalFopen);
+            CHInstallHook("freopen", (void *)&CHFreopen, (void **)&CHOriginalFreopen);
             CHInstallHook("stat", (void *)&CHStat, (void **)&CHOriginalStat);
             CHInstallHook("lstat", (void *)&CHLstat, (void **)&CHOriginalLstat);
             CHInstallHook("fstatat", (void *)&CHFstatAt, (void **)&CHOriginalFstatAt);
+            CHInstallHook("access", (void *)&CHAccess, (void **)&CHOriginalAccess);
+            CHInstallHook("unlink", (void *)&CHUnlink, (void **)&CHOriginalUnlink);
+            CHInstallHook("rename", (void *)&CHRename, (void **)&CHOriginalRename);
+            CHInstallHook("mkdir", (void *)&CHMkdir, (void **)&CHOriginalMkdir);
+            CHInstallHook("rmdir", (void *)&CHRmdir, (void **)&CHOriginalRmdir);
+            CHInstallHook("opendir", (void *)&CHOpendir, (void **)&CHOriginalOpendir);
+            CHInstallHook("readlink", (void *)&CHReadlink, (void **)&CHOriginalReadlink);
+            CHInstallHook("chmod", (void *)&CHChmod, (void **)&CHOriginalChmod);
         }
     }
 }

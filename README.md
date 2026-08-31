@@ -7,9 +7,9 @@ The rootless package targets iOS 15+ and supports both palera1n and Dopamine env
 ## Scope
 
 - Persistent app-profile metadata and assignments
-- Proxy configuration and connectivity checks
-- Location profiles for authorised testing
-- Encrypted backup/import
+- Per-profile proxy routing for standard `NSURLSession` configurations
+- Native MapKit location profiles and app-scoped Core Location overrides
+- JSON backup/export and validated import
 - Local CLI and daemon API foundation
 - Diagnostics and consistency validation
 
@@ -17,7 +17,16 @@ The project does not implement jailbreak-detection bypass, anti-detection evasio
 
 ## Current status
 
-Version 0.6.1 uses an overview-first workflow. The dashboard shows only the currently running profile; installed applications live in a separate Applications screen, and every application opens its own list of profiles. Each profile has a dedicated setup page for activation, launch, device identity, proxy, location and editable profile metadata aliases. System applications and jailbreak utility/tweak bundles are filtered out. The location picker follows Geranium's native MapKit approach with current-location permission and a tappable/draggable pin.
+Version 1.0.0 uses an overview-first workflow. The dashboard shows only the currently running profile; installed applications live in a separate Applications screen, and every application opens its own list of profiles. Each profile has a dedicated setup page for activation, launch, device identity, proxy, location and editable profile metadata aliases. System applications and jailbreak utility/tweak bundles are filtered out. The location picker uses native MapKit with search and a tappable/draggable pin, so it no longer depends on a remote JavaScript map library.
+
+The device catalog includes coherent presets from iPhone 7 through iPhone 15 Pro Max, including Plus, X, XR, XS, mini, Pro, Pro Max, and second/third-generation SE variants.
+
+Proxy routing and location overrides are loaded only inside the selected user application. Proxy routing covers standard default, ephemeral, and background `NSURLSessionConfiguration` instances; applications using custom socket stacks can bypass it. Core Location overrides apply to `CLLocation` objects delivered in the selected process.
+
+The Settings screen exposes backup export/import, runtime diagnostics, active-profile fixture inspection, and explicit isolation boundaries.
+It also includes a read-only Device Identifiers section for the local serial,
+IMEI, MEID, and Wi-Fi MAC when those values are available to the jailbreak app.
+These values are displayed in memory only and are not written to profiles or backups.
 
 ## Quick start
 
@@ -62,8 +71,10 @@ target application is relaunched.
 ## App data containers
 
 `ProfileRuntime` includes an optional filesystem container for the injected
-application. Calls to `open`, `openat` (when using `AT_FDCWD`), `stat`, `lstat`,
-and `fstatat` that target the app's sandbox are redirected to:
+application. Common pathname operations—including `open`, `openat`, `fopen`,
+`freopen`, `stat`, `lstat`, `fstatat`, `access`, `unlink`, `rename`, `mkdir`,
+`rmdir`, `opendir`, `readlink`, and `chmod`—that target the app's sandbox are
+redirected to:
 
 ```text
 /var/mobile/Library/Chameleon/Containers/<bundle-id>/<profile-id>/<container-id>/...
@@ -84,8 +95,9 @@ mkdir -p /var/mobile/Library/Chameleon/Containers/com.example.app/<profile-id>/<
 ```
 
 This is pathname interposition, not a kernel sandbox. Relative `openat` calls
-against an already-open directory are intentionally left unchanged, and
-symlinks inside the source tree should be treated as an escape unless the
+against an already-open directory, direct syscalls, memory-mapped files, and
+file descriptors opened through unhandled APIs retain normal kernel behavior.
+Symlinks inside the source tree should be treated as an escape unless the
 container is provisioned with equivalent symlinks.
 
 ## Download the latest GitHub build
