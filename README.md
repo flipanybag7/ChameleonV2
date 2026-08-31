@@ -17,7 +17,7 @@ The project does not implement jailbreak-detection bypass, anti-detection evasio
 
 ## Current status
 
-Version 1.0.1 uses an overview-first workflow. The dashboard shows only the currently running profile; installed applications live in a separate Applications screen, and every application opens its own list of profiles. Each profile has a dedicated setup page for activation, launch, device identity, proxy, location and editable profile metadata aliases. System applications and jailbreak utility/tweak bundles are filtered out. The location picker bundles Leaflet locally, uses OpenStreetMap tiles, and provides native search plus a tappable/draggable pin. It does not depend on downloading its map engine at runtime.
+Version 1.0.2 uses an overview-first workflow. The dashboard shows only the currently running profile; installed applications live in a separate Applications screen, and every application opens its own list of profiles. Each profile has a dedicated setup page for activation, launch, device identity, proxy, location and editable profile metadata aliases. System applications and jailbreak utility/tweak bundles are filtered out. The location picker bundles Leaflet locally, uses OpenStreetMap tiles, and provides native search plus a tappable/draggable pin. Saving a pin persists its coordinates and enables the location profile automatically.
 
 The device catalog includes coherent presets from iPhone 7 through iPhone 15 Pro Max, including Plus, X, XR, XS, mini, Pro, Pro Max, and second/third-generation SE variants.
 
@@ -98,6 +98,11 @@ against an already-open directory, direct syscalls, memory-mapped files, and
 file descriptors opened through unhandled APIs retain normal kernel behavior.
 Symlinks inside the source tree should be treated as an escape unless the
 container is provisioned with equivalent symlinks.
+
+Keychain records, shared App Group containers, extension processes, and storage
+owned by separate WebKit or service processes are not isolated. Consequently,
+this layer must not be described as a complete clone of an arbitrary third-party
+application or as creating a fresh account session.
 
 ## Download the latest GitHub build
 

@@ -129,8 +129,10 @@
 }
 
 - (void)saveLocation {
-    if (!self.mapReady) { [self showError:@"The map has not finished loading. Reopen the picker after checking the phone's network connection."]; return; }
+    CLLocationCoordinate2D coordinate = self.selectedCoordinate;
+    if (!CLLocationCoordinate2DIsValid(coordinate)) { [self showError:@"The selected coordinates are invalid. Tap the map and try again."]; return; }
     [self.store setLatitude:self.selectedCoordinate.latitude longitude:self.selectedCoordinate.longitude label:self.selectedPlaceLabel ?: @"Map selection" forProfileAtIndex:self.profileIndex];
+    [self.store setLocationEnabled:YES forProfileAtIndex:self.profileIndex];
     [self close];
 }
 

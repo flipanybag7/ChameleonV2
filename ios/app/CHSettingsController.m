@@ -120,7 +120,7 @@
 }
 
 - (void)showBoundaries {
-    [self alert:@"Isolation Details" message:@"This build redirects common pathname-based file operations inside the selected app's home directory. File descriptors already opened by another API, memory-mapped files, direct syscalls, and kernel sandbox policy remain outside this layer. Proxy support applies to standard NSURLSession configurations; custom sockets and embedded networking stacks may bypass it."];
+    [self alert:@"Isolation Details" message:@"This build redirects common pathname-based file operations inside the selected app's home directory and separates standard user defaults. Keychain records, shared App Group containers, extension processes, WebKit-owned storage, direct syscalls, and kernel sandbox policy remain outside this layer. Proxy support applies to standard NSURLSession configurations; custom sockets and embedded networking stacks may bypass it."];
 }
 
 - (void)alert:(NSString *)title message:(NSString *)message {
