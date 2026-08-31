@@ -53,7 +53,7 @@ static NSUUID *CHSyntheticIDFV(void) {
     NSString *seed = CHIdentityString(@"idfvSeed");
     if (!seed.length || !CHIdentityBundleID.length) return nil;
     NSData *data = [[NSString stringWithFormat:@"%@|%@", seed, CHIdentityBundleID] dataUsingEncoding:NSUTF8StringEncoding];
-    const uint8_t *bytes = data.bytes;
+    const uint8_t *bytes = (const uint8_t *)data.bytes;
     uint64_t first = UINT64_C(1469598103934665603), second = UINT64_C(1099511628211);
     for (NSUInteger index = 0; index < data.length; index++) {
         first ^= bytes[index]; first *= UINT64_C(1099511628211);
@@ -107,43 +107,134 @@ static int CHSysctlByName(const char *name, void *oldValue, size_t *oldLength, c
 }
 
 %hook UIDevice
-- (NSString *)model { NSString *value = CHIdentityString(@"deviceModel"); return CHIdentityEnabled && value.length ? value : %orig; }
-- (NSString *)localizedModel { NSString *value = CHIdentityString(@"marketingName"); return CHIdentityEnabled && value.length ? value : %orig; }
-- (NSString *)systemVersion { NSString *value = CHIdentityString(@"systemVersion"); return CHIdentityEnabled && value.length ? value : %orig; }
-- (NSUUID *)identifierForVendor { NSUUID *value = CHIdentityEnabled ? CHSyntheticIDFV() : nil; return value ?: %orig; }
+- (NSString *)model {
+    NSString *value = CHIdentityString(@"deviceModel");
+    if (CHIdentityEnabled && value.length) return value;
+    return %orig;
+}
+- (NSString *)localizedModel {
+    NSString *value = CHIdentityString(@"marketingName");
+    if (CHIdentityEnabled && value.length) return value;
+    return %orig;
+}
+- (NSString *)systemVersion {
+    NSString *value = CHIdentityString(@"systemVersion");
+    if (CHIdentityEnabled && value.length) return value;
+    return %orig;
+}
+- (NSUUID *)identifierForVendor {
+    NSUUID *value = CHIdentityEnabled ? CHSyntheticIDFV() : nil;
+    if (value) return value;
+    return %orig;
+}
 %end
 
 %hook NSProcessInfo
-- (unsigned long long)physicalMemory { double value = CHIdentityDouble(@"physicalMemoryGB"); return CHIdentityEnabled && value > 0 ? (unsigned long long)(value * 1073741824.0) : %orig; }
-- (NSString *)operatingSystemVersionString { NSString *value = CHIdentityString(@"systemVersion"); return CHIdentityEnabled && value.length ? [NSString stringWithFormat:@"Version %@", value] : %orig; }
-- (NSOperatingSystemVersion)operatingSystemVersion { NSOperatingSystemVersion value; return CHIdentityEnabled && CHParseVersion(CHIdentityString(@"systemVersion"), &value) ? value : %orig; }
-- (BOOL)isOperatingSystemAtLeastVersion:(NSOperatingSystemVersion)required { NSOperatingSystemVersion value; if (!CHIdentityEnabled || !CHParseVersion(CHIdentityString(@"systemVersion"), &value)) return %orig; if (value.majorVersion != required.majorVersion) return value.majorVersion > required.majorVersion; if (value.minorVersion != required.minorVersion) return value.minorVersion > required.minorVersion; return value.patchVersion >= required.patchVersion; }
+- (unsigned long long)physicalMemory {
+    double value = CHIdentityDouble(@"physicalMemoryGB");
+    if (CHIdentityEnabled && value > 0) return (unsigned long long)(value * 1073741824.0);
+    return %orig;
+}
+- (NSString *)operatingSystemVersionString {
+    NSString *value = CHIdentityString(@"systemVersion");
+    if (CHIdentityEnabled && value.length) return [NSString stringWithFormat:@"Version %@", value];
+    return %orig;
+}
+- (NSOperatingSystemVersion)operatingSystemVersion {
+    NSOperatingSystemVersion value;
+    if (CHIdentityEnabled && CHParseVersion(CHIdentityString(@"systemVersion"), &value)) return value;
+    return %orig;
+}
+- (BOOL)isOperatingSystemAtLeastVersion:(NSOperatingSystemVersion)required {
+    NSOperatingSystemVersion value;
+    if (!CHIdentityEnabled || !CHParseVersion(CHIdentityString(@"systemVersion"), &value)) return %orig;
+    if (value.majorVersion != required.majorVersion) return value.majorVersion > required.majorVersion;
+    if (value.minorVersion != required.minorVersion) return value.minorVersion > required.minorVersion;
+    return value.patchVersion >= required.patchVersion;
+}
 %end
 
 %hook UIScreen
-- (CGRect)nativeBounds { double width = CHIdentityDouble(@"screenWidth"), height = CHIdentityDouble(@"screenHeight"); return CHIdentityEnabled && self == UIScreen.mainScreen && width > 0 && height > 0 ? CGRectMake(0, 0, width, height) : %orig; }
-- (CGFloat)nativeScale { double value = CHIdentityDouble(@"screenScale"); return CHIdentityEnabled && self == UIScreen.mainScreen && value > 0 ? value : %orig; }
-- (CGRect)bounds { double width = CHIdentityDouble(@"screenWidth"), height = CHIdentityDouble(@"screenHeight"), scale = CHIdentityDouble(@"screenScale"); return CHIdentityEnabled && self == UIScreen.mainScreen && width > 0 && height > 0 && scale > 0 ? CGRectMake(0, 0, width / scale, height / scale) : %orig; }
-- (CGFloat)scale { double value = CHIdentityDouble(@"screenScale"); return CHIdentityEnabled && self == UIScreen.mainScreen && value > 0 ? value : %orig; }
+- (CGRect)nativeBounds {
+    double width = CHIdentityDouble(@"screenWidth"), height = CHIdentityDouble(@"screenHeight");
+    if (CHIdentityEnabled && self == UIScreen.mainScreen && width > 0 && height > 0) return CGRectMake(0, 0, width, height);
+    return %orig;
+}
+- (CGFloat)nativeScale {
+    double value = CHIdentityDouble(@"screenScale");
+    if (CHIdentityEnabled && self == UIScreen.mainScreen && value > 0) return value;
+    return %orig;
+}
+- (CGRect)bounds {
+    double width = CHIdentityDouble(@"screenWidth"), height = CHIdentityDouble(@"screenHeight"), scale = CHIdentityDouble(@"screenScale");
+    if (CHIdentityEnabled && self == UIScreen.mainScreen && width > 0 && height > 0 && scale > 0) return CGRectMake(0, 0, width / scale, height / scale);
+    return %orig;
+}
+- (CGFloat)scale {
+    double value = CHIdentityDouble(@"screenScale");
+    if (CHIdentityEnabled && self == UIScreen.mainScreen && value > 0) return value;
+    return %orig;
+}
 %end
 
 %hook NSLocale
-+ (NSLocale *)currentLocale { NSString *value = CHConfiguredLocaleIdentifier(); return CHIdentityEnabled && value.length ? [NSLocale localeWithLocaleIdentifier:value] : %orig; }
-+ (NSLocale *)autoupdatingCurrentLocale { NSString *value = CHConfiguredLocaleIdentifier(); return CHIdentityEnabled && value.length ? [NSLocale localeWithLocaleIdentifier:value] : %orig; }
-+ (NSArray<NSString *> *)preferredLanguages { NSString *identifier = CHConfiguredLocaleIdentifier(); NSString *language = identifier.length ? [NSLocale componentsFromLocaleIdentifier:identifier][NSLocaleLanguageCode] : nil; return CHIdentityEnabled && language.length ? @[language] : %orig; }
++ (NSLocale *)currentLocale {
+    NSString *value = CHConfiguredLocaleIdentifier();
+    if (CHIdentityEnabled && value.length) return [NSLocale localeWithLocaleIdentifier:value];
+    return %orig;
+}
++ (NSLocale *)autoupdatingCurrentLocale {
+    NSString *value = CHConfiguredLocaleIdentifier();
+    if (CHIdentityEnabled && value.length) return [NSLocale localeWithLocaleIdentifier:value];
+    return %orig;
+}
++ (NSArray<NSString *> *)preferredLanguages {
+    NSString *identifier = CHConfiguredLocaleIdentifier();
+    NSString *language = identifier.length ? [NSLocale componentsFromLocaleIdentifier:identifier][NSLocaleLanguageCode] : nil;
+    if (CHIdentityEnabled && language.length) return @[language];
+    return %orig;
+}
 %end
 
 %hook NSTimeZone
-+ (NSTimeZone *)localTimeZone { NSString *name = CHIdentityString(@"timeZone"); NSTimeZone *value = name.length ? [NSTimeZone timeZoneWithName:name] : nil; return CHIdentityEnabled && value ? value : %orig; }
-+ (NSTimeZone *)defaultTimeZone { NSString *name = CHIdentityString(@"timeZone"); NSTimeZone *value = name.length ? [NSTimeZone timeZoneWithName:name] : nil; return CHIdentityEnabled && value ? value : %orig; }
-+ (NSTimeZone *)systemTimeZone { NSString *name = CHIdentityString(@"timeZone"); NSTimeZone *value = name.length ? [NSTimeZone timeZoneWithName:name] : nil; return CHIdentityEnabled && value ? value : %orig; }
++ (NSTimeZone *)localTimeZone {
+    NSTimeZone *value = [NSTimeZone timeZoneWithName:CHIdentityString(@"timeZone") ?: @""];
+    if (CHIdentityEnabled && value) return value;
+    return %orig;
+}
++ (NSTimeZone *)defaultTimeZone {
+    NSTimeZone *value = [NSTimeZone timeZoneWithName:CHIdentityString(@"timeZone") ?: @""];
+    if (CHIdentityEnabled && value) return value;
+    return %orig;
+}
++ (NSTimeZone *)systemTimeZone {
+    NSTimeZone *value = [NSTimeZone timeZoneWithName:CHIdentityString(@"timeZone") ?: @""];
+    if (CHIdentityEnabled && value) return value;
+    return %orig;
+}
 %end
 
 %hook CTCarrier
-- (NSString *)carrierName { NSString *value = CHIdentityString(@"carrierName"); return CHIdentityEnabled && value.length ? value : %orig; }
-- (NSString *)mobileCountryCode { NSString *value = CHIdentityString(@"mcc"); return CHIdentityEnabled && value.length ? value : %orig; }
-- (NSString *)mobileNetworkCode { NSString *value = CHIdentityString(@"mnc"); return CHIdentityEnabled && value.length ? value : %orig; }
-- (NSString *)isoCountryCode { NSString *value = CHIdentityString(@"isoCountryCode"); return CHIdentityEnabled && value.length ? value.lowercaseString : %orig; }
+- (NSString *)carrierName {
+    NSString *value = CHIdentityString(@"carrierName");
+    if (CHIdentityEnabled && value.length) return value;
+    return %orig;
+}
+- (NSString *)mobileCountryCode {
+    NSString *value = CHIdentityString(@"mcc");
+    if (CHIdentityEnabled && value.length) return value;
+    return %orig;
+}
+- (NSString *)mobileNetworkCode {
+    NSString *value = CHIdentityString(@"mnc");
+    if (CHIdentityEnabled && value.length) return value;
+    return %orig;
+}
+- (NSString *)isoCountryCode {
+    NSString *value = CHIdentityString(@"isoCountryCode");
+    if (CHIdentityEnabled && value.length) return value.lowercaseString;
+    return %orig;
+}
 %end
 
 %ctor {
