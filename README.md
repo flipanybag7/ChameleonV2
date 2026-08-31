@@ -17,7 +17,7 @@ The project does not implement jailbreak-detection bypass, anti-detection evasio
 
 ## Current status
 
-Version 0.6 uses an overview-first workflow. The dashboard shows only the currently running profile; installed applications live in a separate Applications screen, and every application opens its own list of profiles. Each profile has a dedicated setup page for activation, launch, device identity, proxy, location and editable profile metadata aliases. System applications and jailbreak utility/tweak bundles are filtered out. The location picker follows Geranium's native MapKit approach with current-location permission and a tappable/draggable pin.
+Version 0.6.1 uses an overview-first workflow. The dashboard shows only the currently running profile; installed applications live in a separate Applications screen, and every application opens its own list of profiles. Each profile has a dedicated setup page for activation, launch, device identity, proxy, location and editable profile metadata aliases. System applications and jailbreak utility/tweak bundles are filtered out. The location picker follows Geranium's native MapKit approach with current-location permission and a tappable/draggable pin.
 
 ## Quick start
 

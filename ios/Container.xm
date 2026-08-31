@@ -147,11 +147,11 @@ static BOOL CHIsSelectedUserApp(void) {
                                        withIntermediateDirectories:YES
                                                         attributes:nil
                                                              error:nil];
+            CHInstallHook("open", (void *)&CHOpen, (void **)&CHOriginalOpen);
+            CHInstallHook("openat", (void *)&CHOpenAt, (void **)&CHOriginalOpenAt);
+            CHInstallHook("stat", (void *)&CHStat, (void **)&CHOriginalStat);
+            CHInstallHook("lstat", (void *)&CHLstat, (void **)&CHOriginalLstat);
+            CHInstallHook("fstatat", (void *)&CHFstatAt, (void **)&CHOriginalFstatAt);
         }
-        CHInstallHook("open", (void *)&CHOpen, (void **)&CHOriginalOpen);
-        CHInstallHook("openat", (void *)&CHOpenAt, (void **)&CHOriginalOpenAt);
-        CHInstallHook("stat", (void *)&CHStat, (void **)&CHOriginalStat);
-        CHInstallHook("lstat", (void *)&CHLstat, (void **)&CHOriginalLstat);
-        CHInstallHook("fstatat", (void *)&CHFstatAt, (void **)&CHOriginalFstatAt);
     }
 }

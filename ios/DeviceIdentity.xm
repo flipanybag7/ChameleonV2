@@ -106,6 +106,8 @@ static int CHSysctlByName(const char *name, void *oldValue, size_t *oldLength, c
     return CHOriginalSysctlByName(name, oldValue, oldLength, newValue, newLength);
 }
 
+%group CHDeviceIdentityHooks
+
 %hook UIDevice
 - (NSString *)model {
     NSString *value = CHIdentityString(@"deviceModel");
@@ -237,6 +239,8 @@ static int CHSysctlByName(const char *name, void *oldValue, size_t *oldLength, c
 }
 %end
 
+%end
+
 %ctor {
     @autoreleasepool {
         NSDictionary *profile = CHSelectedProfile();
@@ -244,6 +248,7 @@ static int CHSysctlByName(const char *name, void *oldValue, size_t *oldLength, c
         CHIdentityBundleID = [NSBundle.mainBundle.bundleIdentifier copy];
         CHIdentityEnabled = profile != nil && [CHIdentityDevice[@"enabled"] boolValue];
         if (CHIdentityEnabled) {
+            %init(CHDeviceIdentityHooks);
             void *address = dlsym(RTLD_DEFAULT, "sysctlbyname");
             if (address != NULL) MSHookFunction(address, (void *)&CHSysctlByName, (void **)&CHOriginalSysctlByName);
         }
